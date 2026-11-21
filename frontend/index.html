@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 01 – Frontend & Microservices</title>
+  <style>
+    :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5d6678; --line:#d9dde5; --accent:#1f5fbf; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#14171d; --card:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --line:#303644; --accent:#6aa3ff; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:24px 16px; background:var(--bg); color:var(--text);
+           font-family: system-ui, "Segoe UI", Roboto, sans-serif; line-height:1.5; }
+    main { max-width:640px; margin:0 auto; display:grid; gap:20px; }
+    h1 { font-size:1.4rem; margin:0; }
+    p.sub { margin:4px 0 0; color:var(--muted); }
+    section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:20px; }
+    h2 { font-size:1.05rem; margin:0 0 12px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:9px 14px; font-size:.95rem; cursor:pointer; }
+    button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    input { padding:9px 10px; font-size:.95rem; border:1px solid var(--line); border-radius:6px;
+            background:var(--bg); color:var(--text); width:190px; max-width:100%; }
+    ul { padding-left:20px; margin:12px 0 0; }
+    pre { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:12px; margin:12px 0 0;
+          overflow-x:auto; min-height:48px; white-space:pre-wrap; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Frontend – Microservices</h1>
+    <p class="sub">Product Service (8081) · Order Service (8082)</p>
+  </header>
+
+  <section>
+    <h2>Danh sách sản phẩm</h2>
+    <button onclick="loadProducts()">Tải danh sách sản phẩm</button>
+    <ul id="productList"></ul>
+  </section>
+
+  <section>
+    <h2>Tìm sản phẩm thông qua Order Service</h2>
+    <div class="row">
+      <input type="number" id="productId" placeholder="Nhập ID sản phẩm" min="1">
+      <button onclick="findProduct()">Tìm sản phẩm</button>
+    </div>
+    <pre id="result"></pre>
+  </section>
+</main>
+
+<script>
+  // Gọi Product Service (8081) lấy danh sách sản phẩm
+  async function loadProducts() {
+    const list = document.getElementById("productList");
+    try {
+      const response = await fetch("http://localhost:8081/api/products");
+      if (!response.ok) {
+        throw new Error("Không thể tải danh sách sản phẩm");
+      }
+      const products = await response.json();
+      list.innerHTML = "";
+      if (products.length === 0) {
+        list.textContent = "Chưa có sản phẩm";
+        return;
+      }
+      products.forEach(product => {
+        const li = document.createElement("li");
+        li.textContent = `${product.id} - ${product.name}`;
+        list.appendChild(li);
+      });
+    } catch (error) {
+      list.textContent = "Lỗi: " + error.message;
+    }
+  }
+
+  // Gọi Order Service (8082) -> Order Service gọi tiếp Product Service
+  async function findProduct() {
+    const id = document.getElementById("productId").value;
+    const result = document.getElementById("result");
+
+    if (!id || !Number.isInteger(Number(id)) || Number(id) < 1) {
+      result.textContent = "Vui lòng nhập ID hợp lệ";
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8082/api/orders/product/${id}`);
+      if (response.status === 404) {
+        result.textContent = "Không tìm thấy sản phẩm";
+        return;
+      }
+      if (!response.ok) {
+        throw new Error("Không thể lấy thông tin sản phẩm");
+      }
+      const product = await response.json();
+      result.textContent = JSON.stringify(product, null, 2);
+    } catch (error) {
+      result.textContent = "Lỗi: " + error.message;
+    }
+  }
+</script>
+</body>
+</html>
